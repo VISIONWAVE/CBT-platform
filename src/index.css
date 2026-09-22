@@ -2811,3 +2811,1690 @@ button:focus-visible {
     opacity: 0.65;
   }
 }
+/* =========================================================
+   PRE-EXAMINATION SYSTEM CHECK
+   CBT ARENA — PROFESSIONAL PURPLE PROCTORED UI
+   ========================================================= */
+
+.precheck-page {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background:
+    radial-gradient(
+      circle at 8% 8%,
+      rgba(124, 58, 237, 0.13),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 92% 18%,
+      rgba(236, 72, 153, 0.10),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(6, 182, 212, 0.07),
+      transparent 30%
+    ),
+    #f7f7fc;
+
+  color: #191a2a;
+}
+
+/* =========================================================
+   BACKGROUND GLOWS
+   ========================================================= */
+
+.precheck-glow {
+  position: fixed;
+  z-index: 0;
+
+  width: 420px;
+  height: 420px;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  filter: blur(90px);
+
+  opacity: 0.45;
+
+  animation: precheckGlowFloat 9s ease-in-out infinite;
+}
+
+.precheck-glow.glow-one {
+  top: -180px;
+  left: -160px;
+
+  width: 430px;
+  height: 430px;
+
+  background: rgba(124, 58, 237, 0.17);
+}
+
+.precheck-glow.glow-two {
+  right: -180px;
+  bottom: -190px;
+
+  width: 440px;
+  height: 440px;
+
+  background: rgba(236, 72, 153, 0.13);
+
+  animation-delay: -4s;
+}
+
+@keyframes precheckGlowFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(15px, -18px, 0) scale(1.06);
+  }
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.precheck-header {
+  position: relative;
+  z-index: 10;
+
+  width: min(1380px, calc(100% - 48px));
+
+  min-height: 82px;
+
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  border-bottom: 1px solid rgba(225, 222, 237, 0.9);
+}
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.precheck-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.precheck-logo {
+  width: 44px;
+  height: 44px;
+
+  flex: 0 0 44px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7c3aed 0%,
+      #6d28d9 45%,
+      #ec4899 100%
+    );
+
+  color: white;
+
+  font-size: 21px;
+  font-weight: 900;
+
+  box-shadow:
+    0 12px 30px rgba(124, 58, 237, 0.25);
+
+  animation: precheckLogoFloat 3.5s ease-in-out infinite;
+}
+
+@keyframes precheckLogoFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.precheck-brand strong {
+  display: block;
+
+  color: #202133;
+
+  font-size: 16px;
+  font-weight: 850;
+
+  line-height: 1.2;
+}
+
+.precheck-brand span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #8a8d9d;
+
+  font-size: 10px;
+
+  line-height: 1.2;
+}
+
+/* =========================================================
+   SECURE BADGE
+   ========================================================= */
+
+.precheck-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 9px 13px;
+
+  border: 1px solid #dcd4f5;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.75);
+
+  color: #6944c7;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  white-space: nowrap;
+
+  box-shadow:
+    0 8px 25px rgba(76, 48, 130, 0.06);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.precheck-secure svg {
+  color: #22a866;
+}
+
+/* =========================================================
+   MAIN CONTAINER
+   ========================================================= */
+
+.precheck-container {
+  position: relative;
+  z-index: 2;
+
+  width: min(1200px, calc(100% - 48px));
+
+  margin: 0 auto;
+
+  padding: 58px 0 45px;
+}
+
+/* =========================================================
+   INTRO / HEADING
+   ========================================================= */
+
+.precheck-heading {
+  max-width: 850px;
+
+  margin: 0 auto;
+
+  text-align: center;
+}
+
+.precheck-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 13px;
+
+  border: 1px solid #e2d9f7;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.78);
+
+  color: #7044d4;
+
+  font-size: 9px;
+  font-weight: 900;
+
+  letter-spacing: 0.13em;
+
+  box-shadow:
+    0 8px 24px rgba(85, 54, 150, 0.06);
+
+  animation: badgeAppear 0.7s ease-out both;
+}
+
+.precheck-badge svg {
+  color: #25a968;
+}
+
+@keyframes badgeAppear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.precheck-heading h1 {
+  margin: 22px 0 15px;
+
+  color: #191b2e;
+
+  font-size: clamp(34px, 5vw, 56px);
+
+  line-height: 1.05;
+
+  letter-spacing: -0.045em;
+
+  animation: headingAppear 0.75s ease-out both;
+}
+
+.precheck-heading h1 span {
+  background:
+    linear-gradient(
+      90deg,
+      #5b21b6,
+      #7c3aed,
+      #ec4899,
+      #06b6d4,
+      #7c3aed
+    );
+
+  background-size: 300% auto;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  animation: headingGradient 5s linear infinite;
+}
+
+@keyframes headingAppear {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes headingGradient {
+  0% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 300% center;
+  }
+}
+
+.precheck-heading > p {
+  max-width: 780px;
+
+  margin: 0 auto;
+
+  color: #777b8c;
+
+  font-size: 14px;
+
+  line-height: 1.75;
+
+  animation: paragraphAppear 0.9s ease-out both;
+}
+
+.precheck-heading > p strong {
+  color: #5d3cae;
+}
+
+@keyframes paragraphAppear {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   EXAMINATION LABEL
+   ========================================================= */
+
+.exam-subject-label {
+  width: fit-content;
+
+  margin: 22px auto 0;
+
+  padding: 9px 15px;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  border: 1px solid #e3dff0;
+
+  border-radius: 999px;
+
+  background: white;
+
+  color: #898c9c;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  box-shadow:
+    0 8px 22px rgba(40, 30, 80, 0.05);
+}
+
+.exam-subject-label strong {
+  color: #6742c5;
+  font-weight: 850;
+}
+
+/* =========================================================
+   MAIN PRECHECK GRID
+   ========================================================= */
+
+.precheck-grid {
+  margin-top: 42px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.05fr)
+    minmax(0, 0.95fr);
+
+  gap: 20px;
+
+  align-items: stretch;
+}
+
+/* =========================================================
+   SHARED CARD
+   ========================================================= */
+
+.system-check-card,
+.camera-card {
+  position: relative;
+
+  min-width: 0;
+
+  padding: 25px;
+
+  border: 1px solid rgba(226, 222, 238, 0.95);
+
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(250, 248, 255, 0.98)
+    );
+
+  box-shadow:
+    0 20px 55px rgba(47, 35, 88, 0.07);
+
+  overflow: hidden;
+}
+
+.system-check-card::before,
+.camera-card::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: 0;
+
+  width: 100%;
+  height: 3px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #7c3aed,
+      #a855f7,
+      #ec4899,
+      #06b6d4,
+      #7c3aed
+    );
+
+  background-size: 300% 100%;
+
+  animation: precheckRainbow 6s linear infinite;
+}
+
+@keyframes precheckRainbow {
+  0% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 300% center;
+  }
+}
+
+/* =========================================================
+   CARD TITLES
+   ========================================================= */
+
+.card-title,
+.camera-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-bottom: 20px;
+}
+
+.card-title > div > span,
+.camera-card-header > div > span {
+  display: block;
+
+  color: #8b8e9d;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.15em;
+}
+
+.card-title h2,
+.camera-card-header h2 {
+  margin: 5px 0 0;
+
+  color: #27293a;
+
+  font-size: 20px;
+
+  line-height: 1.2;
+}
+
+.card-title > svg {
+  flex: 0 0 auto;
+
+  color: #6d43d0;
+
+  filter:
+    drop-shadow(
+      0 5px 10px rgba(124, 58, 237, 0.15)
+    );
+}
+
+/* =========================================================
+   CHECK ITEMS
+   ========================================================= */
+
+.check-item {
+  position: relative;
+
+  display: grid;
+
+  grid-template-columns: 45px minmax(0, 1fr) auto;
+
+  align-items: center;
+
+  gap: 13px;
+
+  padding: 14px 0;
+
+  border-bottom: 1px solid #efedf4;
+}
+
+.check-item:last-of-type {
+  border-bottom: 0;
+}
+
+.check-icon {
+  width: 45px;
+  height: 45px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 13px;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.check-item:hover .check-icon {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 20px rgba(60, 50, 90, 0.09);
+}
+
+.check-icon.purple {
+  background: #eee8ff;
+  color: #7447d7;
+}
+
+.check-icon.blue {
+  background: #e8f1ff;
+  color: #3476d2;
+}
+
+.check-icon.green {
+  background: #e5f8ee;
+  color: #25a668;
+}
+
+.check-icon.orange {
+  background: #fff0df;
+  color: #dc8430;
+}
+
+.check-content {
+  min-width: 0;
+}
+
+.check-content h3 {
+  margin: 0;
+
+  color: #303242;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.check-content p {
+  margin: 4px 0 0;
+
+  color: #9699a7;
+
+  font-size: 9px;
+
+  line-height: 1.55;
+}
+
+.camera-error {
+  display: block;
+
+  margin-top: 7px;
+
+  color: #d53d58;
+
+  font-size: 8px;
+
+  line-height: 1.4;
+}
+
+/* =========================================================
+   STATUS ICON
+   ========================================================= */
+
+.check-status {
+  width: 29px;
+  height: 29px;
+
+  flex: 0 0 29px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+}
+
+.check-status.passed {
+  background: #e5f8ee;
+  color: #1fa162;
+
+  box-shadow:
+    0 5px 15px rgba(31, 161, 98, 0.12);
+
+  animation: statusPop 0.35s ease-out;
+}
+
+.check-status.failed {
+  background: #fff0f3;
+  color: #d83c57;
+}
+
+.check-status.checking {
+  background: #f0ecff;
+  color: #7044d4;
+
+  animation: statusSpin 1.2s linear infinite;
+}
+
+@keyframes statusPop {
+  from {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes statusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   READINESS BOX
+   ========================================================= */
+
+.readiness-box {
+  margin-top: 17px;
+
+  padding: 15px;
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 12px;
+
+  border-radius: 15px;
+
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.readiness-box.ready {
+  border: 1px solid #bdebd2;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f0fcf5,
+      #e8f9ef
+    );
+
+  color: #1e9860;
+
+  box-shadow:
+    0 8px 25px rgba(31, 161, 98, 0.07);
+}
+
+.readiness-box.not-ready {
+  border: 1px solid #eee6d4;
+
+  background: #fffaf0;
+
+  color: #9a741e;
+}
+
+.readiness-box > svg {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+}
+
+.readiness-box div {
+  min-width: 0;
+}
+
+.readiness-box strong {
+  display: block;
+
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.readiness-box span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #7e9b8c;
+
+  font-size: 8px;
+
+  line-height: 1.5;
+}
+
+.readiness-box.not-ready span {
+  color: #a29370;
+}
+
+/* =========================================================
+   RETRY CAMERA
+   ========================================================= */
+
+.retry-camera {
+  width: 100%;
+
+  margin-top: 12px;
+
+  min-height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  border: 1px solid #e4dcef;
+
+  border-radius: 10px;
+
+  background: #faf8ff;
+
+  color: #6c45ca;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  transition: all 0.2s ease;
+}
+
+.retry-camera:hover {
+  border-color: #c9b7ee;
+
+  background: #f3edff;
+
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   CAMERA HEADER
+   ========================================================= */
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 7px 10px;
+
+  border: 1px solid #bdebd2;
+
+  border-radius: 999px;
+
+  background: #effbf4;
+
+  color: #20945d;
+
+  font-size: 8px;
+  font-weight: 900;
+
+  letter-spacing: 0.08em;
+}
+
+.live-badge span {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #22a968;
+
+  box-shadow:
+    0 0 0 4px rgba(34, 169, 104, 0.10);
+
+  animation: livePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.45;
+    transform: scale(0.75);
+  }
+}
+
+/* =========================================================
+   CAMERA PREVIEW
+   ========================================================= */
+
+.camera-preview {
+  position: relative;
+
+  width: 100%;
+
+  min-height: 365px;
+
+  display: grid;
+  place-items: center;
+
+  overflow: hidden;
+
+  border-radius: 18px;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(124, 58, 237, 0.20),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      #171329,
+      #211b3a 55%,
+      #151522
+    );
+
+  border: 1px solid #332b51;
+
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.25);
+}
+
+.camera-preview::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.04),
+      transparent 35%,
+      rgba(0,0,0,0.12)
+    );
+}
+
+/* =========================================================
+   REAL CAMERA VIDEO
+   ========================================================= */
+
+.camera-video {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  transform: scaleX(-1);
+
+  background: #11111b;
+}
+
+/* =========================================================
+   CAMERA PLACEHOLDER
+   ========================================================= */
+
+.camera-placeholder {
+  position: relative;
+  z-index: 2;
+
+  width: min(260px, 85%);
+
+  padding: 30px 20px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  text-align: center;
+
+  border: 1px solid rgba(255,255,255,0.10);
+
+  border-radius: 18px;
+
+  background: rgba(255,255,255,0.045);
+
+  color: #d9d4ec;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.camera-placeholder svg {
+  margin-bottom: 14px;
+
+  color: #9c7de9;
+
+  animation: cameraFloat 2.5s ease-in-out infinite;
+}
+
+@keyframes cameraFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.camera-placeholder strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.camera-placeholder span {
+  margin-top: 7px;
+
+  color: #9d98ae;
+
+  font-size: 9px;
+
+  line-height: 1.55;
+}
+
+/* =========================================================
+   CAMERA FRAME
+   ========================================================= */
+
+.camera-frame {
+  position: absolute;
+
+  z-index: 5;
+
+  inset: 12% 17%;
+
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+
+  width: 43px;
+  height: 43px;
+
+  border-color: rgba(255,255,255,0.92);
+
+  border-style: solid;
+
+  filter:
+    drop-shadow(
+      0 0 8px rgba(124, 58, 237, 0.8)
+    );
+}
+
+.corner.top-left {
+  top: 0;
+  left: 0;
+
+  border-width: 3px 0 0 3px;
+
+  border-radius: 12px 0 0 0;
+}
+
+.corner.top-right {
+  top: 0;
+  right: 0;
+
+  border-width: 3px 3px 0 0;
+
+  border-radius: 0 12px 0 0;
+}
+
+.corner.bottom-left {
+  bottom: 0;
+  left: 0;
+
+  border-width: 0 0 3px 3px;
+
+  border-radius: 0 0 0 12px;
+}
+
+.corner.bottom-right {
+  right: 0;
+  bottom: 0;
+
+  border-width: 0 3px 3px 0;
+
+  border-radius: 0 0 12px 0;
+}
+
+/* =========================================================
+   FACE GUIDE
+   ========================================================= */
+
+.face-guide {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  width: 150px;
+  height: 205px;
+
+  transform: translate(-50%, -50%);
+
+  display: grid;
+  place-items: center;
+
+  border: 2px dashed rgba(255,255,255,0.58);
+
+  border-radius: 50%;
+
+  color: rgba(255,255,255,0.78);
+
+  background:
+    radial-gradient(
+      ellipse,
+      rgba(124, 58, 237, 0.08),
+      transparent 65%
+    );
+
+  box-shadow:
+    0 0 0 8px rgba(124, 58, 237, 0.04),
+    0 0 30px rgba(124, 58, 237, 0.14);
+
+  animation: faceGuidePulse 2.4s ease-in-out infinite;
+}
+
+.face-guide svg {
+  opacity: 0.75;
+}
+
+@keyframes faceGuidePulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.025);
+  }
+}
+
+/* =========================================================
+   CAMERA INSTRUCTION
+   ========================================================= */
+
+.camera-instruction {
+  margin-top: 13px;
+
+  padding: 12px 14px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  border: 1px solid #d8f0e2;
+
+  border-radius: 12px;
+
+  background: #f3fcf6;
+
+  color: #37825f;
+
+  font-size: 9px;
+
+  line-height: 1.5;
+}
+
+.camera-instruction svg {
+  flex: 0 0 auto;
+
+  color: #25a668;
+}
+
+/* =========================================================
+   FINAL READINESS
+   ========================================================= */
+
+.final-readiness {
+  position: relative;
+
+  margin-top: 22px;
+
+  padding: 18px 20px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  border: 1px solid #e5e2ec;
+
+  border-radius: 17px;
+
+  background: rgba(255,255,255,0.82);
+
+  box-shadow:
+    0 12px 35px rgba(44, 32, 76, 0.05);
+
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.final-readiness.ready {
+  border-color: #bdebd2;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f1fcf5,
+      #eaf9f0
+    );
+
+  box-shadow:
+    0 12px 35px rgba(31, 161, 98, 0.08);
+}
+
+.final-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 14px;
+
+  background: #f0ebff;
+
+  color: #7044d4;
+}
+
+.final-readiness.ready .final-icon {
+  background: #dff6e9;
+  color: #21a162;
+
+  animation: readyIconPulse 2s ease-in-out infinite;
+}
+
+@keyframes readyIconPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(33,161,98,0.10);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(33,161,98,0.03);
+  }
+}
+
+.final-readiness h2 {
+  margin: 0;
+
+  color: #2c2e3e;
+
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.final-readiness.ready h2 {
+  color: #237b53;
+}
+
+.final-readiness p {
+  margin: 5px 0 0;
+
+  color: #8b8e9d;
+
+  font-size: 9px;
+
+  line-height: 1.55;
+}
+
+/* =========================================================
+   ACTION BUTTONS
+   ========================================================= */
+
+.precheck-actions {
+  margin-top: 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+}
+
+.back-dashboard,
+.start-exam-button {
+  min-height: 48px;
+
+  padding: 0 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border-radius: 11px;
+
+  font-size: 10px;
+  font-weight: 850;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.back-dashboard {
+  border: 1px solid #e0dee7;
+
+  background: white;
+
+  color: #696c7b;
+}
+
+.back-dashboard:hover {
+  border-color: #c9c4d8;
+
+  color: #51416e;
+
+  transform: translateY(-2px);
+}
+
+.start-exam-button {
+  border: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      #6d28d9,
+      #7c3aed,
+      #ec4899
+    );
+
+  background-size: 200% 200%;
+
+  color: white;
+
+  box-shadow:
+    0 10px 25px rgba(124, 58, 237, 0.25);
+
+  animation: startButtonGradient 5s ease infinite;
+}
+
+@keyframes startButtonGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.start-exam-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 15px 32px rgba(124, 58, 237, 0.34);
+}
+
+.start-exam-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.start-exam-button:disabled {
+  cursor: not-allowed;
+
+  background: #d9d7df;
+
+  color: #8e8b96;
+
+  box-shadow: none;
+
+  animation: none;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.precheck-footer {
+  margin-top: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  color: #999cab;
+
+  font-size: 8px;
+
+  text-align: center;
+}
+
+.precheck-footer svg {
+  color: #7d65c6;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 950px) {
+  .precheck-container {
+    padding-top: 45px;
+  }
+
+  .precheck-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .camera-preview {
+    min-height: 420px;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 650px) {
+  .precheck-header {
+    width: calc(100% - 28px);
+
+    min-height: 70px;
+  }
+
+  .precheck-container {
+    width: calc(100% - 28px);
+
+    padding: 35px 0 30px;
+  }
+
+  .precheck-logo {
+    width: 38px;
+    height: 38px;
+
+    flex-basis: 38px;
+
+    border-radius: 11px;
+
+    font-size: 18px;
+  }
+
+  .precheck-brand strong {
+    font-size: 14px;
+  }
+
+  .precheck-brand span {
+    font-size: 8px;
+  }
+
+  .precheck-secure {
+    padding: 7px 9px;
+
+    font-size: 7px;
+  }
+
+  .precheck-secure svg {
+    width: 14px;
+  }
+
+  .precheck-heading h1 {
+    margin-top: 18px;
+
+    font-size: clamp(31px, 10vw, 43px);
+  }
+
+  .precheck-heading > p {
+    font-size: 12px;
+
+    line-height: 1.7;
+  }
+
+  .precheck-badge {
+    font-size: 7px;
+
+    letter-spacing: 0.08em;
+  }
+
+  .exam-subject-label {
+    font-size: 9px;
+  }
+
+  .precheck-grid {
+    margin-top: 28px;
+
+    gap: 14px;
+  }
+
+  .system-check-card,
+  .camera-card {
+    padding: 18px;
+
+    border-radius: 18px;
+  }
+
+  .card-title h2,
+  .camera-card-header h2 {
+    font-size: 17px;
+  }
+
+  .check-item {
+    grid-template-columns: 39px minmax(0, 1fr) auto;
+
+    gap: 10px;
+
+    padding: 12px 0;
+  }
+
+  .check-icon {
+    width: 39px;
+    height: 39px;
+
+    border-radius: 11px;
+  }
+
+  .check-icon svg {
+    width: 18px;
+  }
+
+  .check-content h3 {
+    font-size: 11px;
+  }
+
+  .check-content p {
+    font-size: 8px;
+  }
+
+  .check-status {
+    width: 26px;
+    height: 26px;
+
+    flex-basis: 26px;
+  }
+
+  .check-status svg {
+    width: 14px;
+  }
+
+  .camera-preview {
+    min-height: 330px;
+
+    border-radius: 15px;
+  }
+
+  .camera-frame {
+    inset: 12% 11%;
+  }
+
+  .face-guide {
+    width: 125px;
+    height: 175px;
+  }
+
+  .face-guide svg {
+    width: 58px;
+  }
+
+  .final-readiness {
+    padding: 15px;
+
+    gap: 11px;
+  }
+
+  .final-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+
+    border-radius: 12px;
+  }
+
+  .final-icon svg {
+    width: 22px;
+  }
+
+  .final-readiness h2 {
+    font-size: 12px;
+  }
+
+  .final-readiness p {
+    font-size: 8px;
+  }
+
+  .precheck-actions {
+    flex-direction: column-reverse;
+
+    align-items: stretch;
+  }
+
+  .back-dashboard,
+  .start-exam-button {
+    width: 100%;
+  }
+
+  .precheck-footer {
+    line-height: 1.5;
+  }
+}
+
+/* =========================================================
+   SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 420px) {
+  .precheck-header {
+    width: calc(100% - 20px);
+  }
+
+  .precheck-container {
+    width: calc(100% - 20px);
+
+    padding-top: 27px;
+  }
+
+  .precheck-secure {
+    display: none;
+  }
+
+  .precheck-heading h1 {
+    font-size: 30px;
+  }
+
+  .precheck-heading > p {
+    font-size: 11px;
+  }
+
+  .precheck-grid {
+    margin-top: 23px;
+  }
+
+  .system-check-card,
+  .camera-card {
+    padding: 15px;
+  }
+
+  .camera-preview {
+    min-height: 285px;
+  }
+
+  .camera-frame {
+    inset: 11% 8%;
+  }
+
+  .face-guide {
+    width: 110px;
+    height: 155px;
+  }
+
+  .corner {
+    width: 34px;
+    height: 34px;
+  }
+
+  .camera-instruction {
+    font-size: 8px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .precheck-glow,
+  .precheck-logo,
+  .precheck-badge,
+  .precheck-heading h1,
+  .precheck-heading > p,
+  .precheck-heading h1 span,
+  .system-check-card::before,
+  .camera-card::before,
+  .check-status.passed,
+  .check-status.checking,
+  .live-badge span,
+  .face-guide,
+  .camera-placeholder svg,
+  .final-readiness.ready .final-icon,
+  .start-exam-button {
+    animation: none !important;
+  }
+}

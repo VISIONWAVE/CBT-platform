@@ -1,135 +1,212 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
-import {
+  AlertCircle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Flag,
   Clock3,
+  Flag,
+  RefreshCw,
   Send,
-  AlertCircle,
   ShieldAlert,
   ShieldCheck,
-  Maximize,
-  Monitor,
   Wifi,
-  Camera,
-  UserRound,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 
-import { questions } from "../data/questions";
+import { supabase } from "../lib/supabase";
+
+function shuffleArray(items) {
+  const array = [...items];
+
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+
+  return array;
+}
+
+function normalizeAnswer(value) {
+  if (value === null || value === undefined) {
+    return -1;
+  }
+
+  if (typeof value === "number") {
+    return value >= 0 && value <= 4 ? value : -1;
+  }
+
+  const answer = String(value).trim().toUpperCase();
+
+  const map = {
+    A: 0,
+    B: 1,
+    C: 2,
+    D: 3,
+    E: 4,
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+  };
+
+  return map[answer] ?? -1;
+}
+
+function normalizeQuestion(row) {
+  const options = [
+    row.option_a,
+    row.option_b,
+    row.option_c,
+    row.option_d,
+    row.option_e,
+  ].filter(
+    (option) =>
+      option !== null &&
+      option !== undefined &&
+      String(option).trim() !== ""
+  );
+
+  return {
+    id: row.id,
+    question: row.question_text || "",
+    options,
+    answer: normalizeAnswer(row.correct_option),
+
+    subjectId: row.subject_id,
+    departmentId: row.department_id,
+
+    year: row.year,
+    examSeries: row.exam_series,
+    paper: row.paper,
+    questionNumber: row.question_number,
+
+    topic: row.topic,
+    subtopic: row.subtopic,
+    difficulty: row.difficulty,
+
+    explanation: row.explanation,
+
+    sourceType: row.source_type,
+    sourceReference: row.source_reference,
+    sourceUrl: row.source_url,
+  };
+}
 
 function CBTExam({
   subject = "Use of English",
   onFinish,
   onCancel,
-}) {
-  // =====================================================
-  // QUESTIONS
-  // =====================================================
 
-  const examQuestions = useMemo(
-    () =>
-      questions.filter(
-        (question) =>
-          question.subject === subject
-      ),
-    [subject]
+  questionCount: initialQuestionCount = 150,
+  durationMinutes: initialDurationMinutes = 180,
+
+  mode = "full_mock",
+  year = null,
+  startYear = null,
+  endYear = null,
+}) {
+  // =========================================================
+  // CONFIGURATION
+  // =========================================================
+
+  const [questionCount, setQuestionCount] = useState(
+    initialQuestionCount
   );
 
-  // =====================================================
-  // EXAM STATE
-  // =====================================================
+  const [durationMinutes, setDurationMinutes] = useState(
+    initialDurationMinutes
+  );
 
-  const [examStarted, setExamStarted] =
-    useState(false);
+  // =========================================================
+  // DATABASE STATE
+  // =========================================================
 
-  const [current, setCurrent] =
+  const [loading, setLoading] = useState(true);
+
+  const [loadingMessage, setLoadingMessage] =
+    useState("Loading examination questions...");
+
+  const [loadError, setLoadError] = useState("");
+
+  const [availableQuestionCount, setAvailableQuestionCount] =
     useState(0);
 
-  const [answers, setAnswers] =
-    useState({});
+  const [examQuestions, setExamQuestions] = useState([]);
 
-  const [flagged, setFlagged] =
-    useState([]);
+  // =========================================================
+  // EXAM STATE
+  // =========================================================
 
-  const [seconds, setSeconds] =
-    useState(30 * 60);
+  const [examStarted, setExamStarted] = useState(false);
 
-  const [showSubmit, setShowSubmit] =
-    useState(false);
+  const [current, setCurrent] = useState(0);
 
-  const [submitted, setSubmitted] =
-    useState(false);
+  const [answers, setAnswers] = useState({});
 
-  // =====================================================
-  // PRE-EXAM CHECK STATE
-  // =====================================================
+  const [flagged, setFlagged] = useState([]);
 
-  const [fullscreenSupported, setFullscreenSupported] =
-    useState(false);
+  const [seconds, setSeconds] = useState(
+    initialDurationMinutes * 60
+  );
+
+  const [showSubmit, setShowSubmit] = useState(false);
+
+  const [submitted, setSubmitted] = useState(false);
+
+  // =========================================================
+  // EXAM INFORMATION
+  // =========================================================
+
+  const [subjectInfo, setSubjectInfo] = useState(null);
+
+  // =========================================================
+  // INTERNET
+  // =========================================================
 
   const [internetConnected, setInternetConnected] =
-    useState(navigator.onLine);
+    useState(() =>
+      typeof navigator !== "undefined"
+        ? navigator.onLine
+        : true
+    );
 
-  const [cameraStatus, setCameraStatus] =
-    useState("checking");
+  // =========================================================
+  // ANTI-CHEATING / EXAM INTEGRITY
+  // =========================================================
 
-  const [cameraReady, setCameraReady] =
-    useState(false);
-
-  const [faceReady, setFaceReady] =
-    useState(false);
-
-  const [cameraError, setCameraError] =
-    useState("");
-
-  const videoRef = useRef(null);
-
-  const streamRef = useRef(null);
-
-  // =====================================================
-  // ANTI-CHEATING
-  // =====================================================
-
-  const [violations, setViolations] =
-    useState(0);
+  const [violations, setViolations] = useState(0);
 
   const [showViolation, setShowViolation] =
     useState(false);
 
+  const [violationReason, setViolationReason] =
+    useState("");
+
   const [isFullscreen, setIsFullscreen] =
     useState(false);
 
-  // =====================================================
+  // =========================================================
   // REFS
-  // =====================================================
+  // =========================================================
 
-  const answersRef =
-    useRef(answers);
+  const answersRef = useRef(answers);
 
-  const submittedRef =
-    useRef(submitted);
+  const submittedRef = useRef(submitted);
 
-  const onFinishRef =
-    useRef(onFinish);
+  const onFinishRef = useRef(onFinish);
 
-  const violationLockRef =
-    useRef(false);
+  const violationLockRef = useRef(false);
 
   const fullscreenViolationLockRef =
     useRef(false);
 
-  // =====================================================
+  const finishLockRef = useRef(false);
+
+  // =========================================================
   // KEEP REFS UPDATED
-  // =====================================================
+  // =========================================================
 
   useEffect(() => {
     answersRef.current = answers;
@@ -143,22 +220,178 @@ function CBTExam({
     onFinishRef.current = onFinish;
   }, [onFinish]);
 
-  // =====================================================
-  // FULLSCREEN CAPABILITY CHECK
-  // =====================================================
+  // =========================================================
+  // LOAD QUESTIONS FROM SUPABASE
+  // =========================================================
 
   useEffect(() => {
-    const supported =
-      Boolean(document.fullscreenEnabled) &&
-      typeof document.documentElement
-        .requestFullscreen === "function";
+    let cancelled = false;
 
-    setFullscreenSupported(supported);
-  }, []);
+    async function loadQuestions() {
+      setLoading(true);
+      setLoadError("");
 
-  // =====================================================
-  // INTERNET CHECK
-  // =====================================================
+      try {
+        setLoadingMessage(
+          `Finding ${subject} in the CBT Arena database...`
+        );
+
+        // -----------------------------------------------------
+        // FIND SUBJECT
+        // -----------------------------------------------------
+
+        const databaseSubjectName =
+  subject === "Use of English"
+    ? "English Language"
+    : subject;
+
+const { data: subjectRow, error: subjectError } =
+  await supabase
+    .from("subjects")
+    .select("*")
+    .eq("name", databaseSubjectName)
+    .maybeSingle();
+
+        if (subjectError) {
+          throw new Error(
+            `Unable to load subject: ${subjectError.message}`
+          );
+        }
+
+        if (!subjectRow) {
+          throw new Error(
+            `The subject "${subject}" was not found in the database.`
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setSubjectInfo(subjectRow);
+
+        // -----------------------------------------------------
+        // FIND QUESTIONS
+        // -----------------------------------------------------
+
+        setLoadingMessage(
+          `Loading ${subject} questions from the database...`
+        );
+
+        let query = supabase
+          .from("questions")
+          .select("*")
+          .eq("subject_id", subjectRow.id)
+          .eq("is_active", true);
+          
+
+        // -----------------------------------------------------
+        // YEAR FILTER
+        // -----------------------------------------------------
+
+        if (year) {
+          query = query.eq("year", year);
+        }
+
+        // -----------------------------------------------------
+        // YEAR RANGE FILTER
+        // -----------------------------------------------------
+
+        if (startYear) {
+          query = query.gte("year", startYear);
+        }
+
+        if (endYear) {
+          query = query.lte("year", endYear);
+        }
+
+        const { data: rows, error: questionsError } =
+          await query;
+
+        if (questionsError) {
+          throw new Error(
+            `Unable to load questions: ${questionsError.message}`
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const normalizedQuestions = (rows || [])
+          .map(normalizeQuestion)
+          .filter(
+            (question) =>
+              question.question &&
+              question.options.length >= 2
+          );
+
+        setAvailableQuestionCount(
+          normalizedQuestions.length
+        );
+
+        // -----------------------------------------------------
+        // RANDOMIZE
+        // -----------------------------------------------------
+
+        const randomized =
+          shuffleArray(normalizedQuestions);
+
+        const selected = randomized.slice(
+          0,
+          Math.min(
+            Number(questionCount) || 150,
+            randomized.length
+          )
+        );
+
+        setExamQuestions(selected);
+
+        // Reset examination state when a new subject is loaded.
+        setCurrent(0);
+        setAnswers({});
+        setFlagged([]);
+        setSubmitted(false);
+        setExamStarted(false);
+        setSeconds(
+          (Number(durationMinutes) || 180) * 60
+        );
+      } catch (error) {
+        console.error(
+          "CBT Arena question loading error:",
+          error
+        );
+
+        if (!cancelled) {
+          setLoadError(
+            error?.message ||
+              "Something went wrong while loading the examination."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadQuestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    subject,
+    year,
+    startYear,
+    endYear,
+    questionCount,
+    durationMinutes,
+  ]);
+
+  // =========================================================
+  // INTERNET MONITORING
+  // =========================================================
 
   useEffect(() => {
     function handleOnline() {
@@ -169,10 +402,7 @@ function CBTExam({
       setInternetConnected(false);
     }
 
-    window.addEventListener(
-      "online",
-      handleOnline
-    );
+    window.addEventListener("online", handleOnline);
 
     window.addEventListener(
       "offline",
@@ -192,247 +422,74 @@ function CBTExam({
     };
   }, []);
 
-  // =====================================================
-  // CAMERA
-  // =====================================================
+  // =========================================================
+  // FULLSCREEN SUPPORT
+  // =========================================================
 
-  async function startCamera() {
-    setCameraStatus("checking");
-    setCameraError("");
-    setCameraReady(false);
-    setFaceReady(false);
+  const fullscreenSupported = useMemo(() => {
+    return (
+      typeof document !== "undefined" &&
+      Boolean(document.fullscreenEnabled) &&
+      typeof document.documentElement
+        .requestFullscreen === "function"
+    );
+  }, []);
 
-    try {
-      if (
-        !navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia
-      ) {
-        setCameraStatus("failed");
-
-        setCameraError(
-          "Your browser does not support camera access."
-        );
-
-        return;
-      }
-
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: {
-              ideal: 1280,
-            },
-            height: {
-              ideal: 720,
-            },
-          },
-          audio: false,
-        });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject =
-          stream;
-
-        await videoRef.current.play().catch(
-          () => {}
-        );
-      }
-
-      setCameraStatus("passed");
-
-      setCameraReady(true);
-
-      /*
-       * The camera is active and the candidate
-       * can position their face.
-       *
-       * Actual AI face detection will be added
-       * later.
-       */
-      setFaceReady(true);
-    } catch (error) {
-      console.error(
-        "Camera error:",
-        error
-      );
-
-      setCameraStatus("failed");
-
-      setCameraReady(false);
-
-      setFaceReady(false);
-
-      if (
-        error.name ===
-        "NotAllowedError"
-      ) {
-        setCameraError(
-          "Camera permission was denied. Please allow camera access."
-        );
-      } else if (
-        error.name ===
-        "NotFoundError"
-      ) {
-        setCameraError(
-          "No camera was found on this device."
-        );
-      } else {
-        setCameraError(
-          "Unable to access the camera. Please check your camera."
-        );
-      }
-    }
-  }
-
-  // =====================================================
-  // STOP CAMERA
-  // =====================================================
-
-  function stopCamera() {
-    if (streamRef.current) {
-      streamRef.current
-        .getTracks()
-        .forEach((track) => {
-          track.stop();
-        });
-
-      streamRef.current = null;
-    }
-  }
-
-  // =====================================================
-  // START CAMERA WHEN PRE-CHECK OPENS
-  // =====================================================
-
-  useEffect(() => {
-    if (
-      examQuestions.length === 0 ||
-      examStarted
-    ) {
-      return;
-    }
-
-    startCamera();
-
-    return () => {
-      stopCamera();
-    };
-  }, [
-    examQuestions.length,
-    examStarted,
-  ]);
-
-  // =====================================================
+  // =========================================================
   // ENTER FULLSCREEN
-  // =====================================================
+  // =========================================================
 
   async function enterFullscreen() {
+    if (!fullscreenSupported) {
+      return false;
+    }
+
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
+      await document.documentElement.requestFullscreen();
+
+      setIsFullscreen(
+        Boolean(document.fullscreenElement)
+      );
+
+      return true;
     } catch (error) {
-      console.log(
-        "Fullscreen request blocked:",
+      console.warn(
+        "Fullscreen could not be enabled:",
         error
       );
+
+      return false;
     }
   }
 
-  // =====================================================
+  // =========================================================
   // EXIT FULLSCREEN
-  // =====================================================
+  // =========================================================
 
-  function exitFullscreen() {
-    try {
-      if (document.fullscreenElement) {
-        document
-          .exitFullscreen()
-          .catch(() => {});
+  async function exitFullscreen() {
+    if (
+      typeof document !== "undefined" &&
+      document.fullscreenElement
+    ) {
+      try {
+        await document.exitFullscreen();
+      } catch (error) {
+        console.warn(
+          "Fullscreen could not be exited:",
+          error
+        );
       }
-    } catch (error) {
-      console.log(
-        "Could not exit fullscreen:",
-        error
-      );
-    }
-  }
-
-  // =====================================================
-  // BEGIN EXAM
-  // =====================================================
-
-  async function beginExam() {
-    if (!allChecksPassed) {
-      return;
     }
 
-    stopCamera();
-
-    await enterFullscreen();
-
-    setExamStarted(true);
+    setIsFullscreen(false);
   }
 
-  // =====================================================
-  // ALL CHECKS
-  // =====================================================
+  // =========================================================
+  // VIOLATION
+  // =========================================================
 
-  const allChecksPassed =
-    fullscreenSupported &&
-    internetConnected &&
-    cameraReady &&
-    faceReady;
-
-  // =====================================================
-  // FINISH EXAM
-  // =====================================================
-
-  function finishExam() {
+  function registerViolation(reason) {
     if (submittedRef.current) {
-      return;
-    }
-
-    submittedRef.current = true;
-
-    setSubmitted(true);
-
-    setShowSubmit(false);
-
-    setShowViolation(false);
-
-    stopCamera();
-
-    if (document.fullscreenElement) {
-      document
-        .exitFullscreen()
-        .catch(() => {});
-    }
-
-    if (
-      typeof onFinishRef.current ===
-      "function"
-    ) {
-      onFinishRef.current(
-        answersRef.current,
-        examQuestions
-      );
-    }
-  }
-
-  // =====================================================
-  // REGISTER VIOLATION
-  // =====================================================
-
-  function registerViolation() {
-    if (
-      submittedRef.current ||
-      examQuestions.length === 0 ||
-      !examStarted
-    ) {
       return;
     }
 
@@ -442,96 +499,24 @@ function CBTExam({
 
     violationLockRef.current = true;
 
+    setViolationReason(reason);
+
     setViolations((previous) => {
-      const newCount =
-        previous + 1;
+      const next = previous + 1;
 
-      if (newCount >= 3) {
-        setTimeout(() => {
-          finishExam();
-        }, 300);
-
-        return newCount;
-      }
-
-      setShowViolation(true);
-
-      return newCount;
+      return next;
     });
+
+    setShowViolation(true);
 
     setTimeout(() => {
       violationLockRef.current = false;
-    }, 1000);
+    }, 1500);
   }
 
-  // =====================================================
-  // TAB SWITCH DETECTION
-  // =====================================================
-
-  useEffect(() => {
-    if (!examStarted) {
-      return;
-    }
-
-    function handleVisibilityChange() {
-      if (
-        document.hidden &&
-        !submittedRef.current
-      ) {
-        registerViolation();
-      }
-    }
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
-    );
-
-    return () => {
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
-    };
-  }, [
-    examStarted,
-    examQuestions.length,
-  ]);
-
-  // =====================================================
-  // WINDOW BLUR
-  // =====================================================
-
-  useEffect(() => {
-    if (!examStarted) {
-      return;
-    }
-
-    function handleWindowBlur() {
-      if (!submittedRef.current) {
-        registerViolation();
-      }
-    }
-
-    window.addEventListener(
-      "blur",
-      handleWindowBlur
-    );
-
-    return () => {
-      window.removeEventListener(
-        "blur",
-        handleWindowBlur
-      );
-    };
-  }, [
-    examStarted,
-    examQuestions.length,
-  ]);
-
-  // =====================================================
-  // FULLSCREEN DETECTION
-  // =====================================================
+  // =========================================================
+  // FULLSCREEN MONITOR
+  // =========================================================
 
   useEffect(() => {
     if (!examStarted) {
@@ -540,9 +525,7 @@ function CBTExam({
 
     function handleFullscreenChange() {
       const active =
-        Boolean(
-          document.fullscreenElement
-        );
+        Boolean(document.fullscreenElement);
 
       setIsFullscreen(active);
 
@@ -559,12 +542,14 @@ function CBTExam({
         fullscreenViolationLockRef.current =
           true;
 
-        registerViolation();
+        registerViolation(
+          "You left fullscreen mode during the examination."
+        );
 
         setTimeout(() => {
           fullscreenViolationLockRef.current =
             false;
-        }, 1000);
+        }, 1500);
       }
     }
 
@@ -579,37 +564,195 @@ function CBTExam({
         handleFullscreenChange
       );
     };
-  }, [
-    examStarted,
-    examQuestions.length,
-  ]);
+  }, [examStarted]);
 
-  // =====================================================
+  // =========================================================
+  // WINDOW FOCUS MONITOR
+  // =========================================================
+
+  useEffect(() => {
+    if (!examStarted) {
+      return;
+    }
+
+    function handleBlur() {
+      registerViolation(
+        "The examination window lost focus."
+      );
+    }
+
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener(
+        "blur",
+        handleBlur
+      );
+    };
+  }, [examStarted]);
+
+  // =========================================================
+  // TAB VISIBILITY
+  // =========================================================
+
+  useEffect(() => {
+    if (!examStarted) {
+      return;
+    }
+
+    function handleVisibilityChange() {
+      if (
+        document.hidden &&
+        !submittedRef.current
+      ) {
+        registerViolation(
+          "The examination tab was moved out of view."
+        );
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, [examStarted]);
+
+  // =========================================================
+  // START EXAM
+  // =========================================================
+async function beginExam() {
+  if (examQuestions.length === 0) {
+    return;
+  }
+
+  if (!internetConnected) {
+    setViolationReason(
+      "An internet connection is required to begin the examination."
+    );
+
+    setShowViolation(true);
+    return;
+  }
+
+  if (fullscreenSupported) {
+    await enterFullscreen();
+  }
+
+  setSeconds(
+    (Number(durationMinutes) || 180) * 60
+  );
+
+  setCurrent(0);
+  setAnswers({});
+  setFlagged([]);
+  setSubmitted(false);
+  setExamStarted(true);
+}
+  async function beginExam() {
+    if (examQuestions.length === 0) {
+      return;
+    }
+
+    if (!internetConnected) {
+      setViolationReason(
+        "An internet connection is required to begin the examination."
+      );
+
+      setShowViolation(true);
+
+      return;
+    }
+
+    if (fullscreenSupported) {
+      await enterFullscreen();
+    }
+
+    setSeconds(
+      (Number(durationMinutes) || 180) * 60
+    );
+
+    setCurrent(0);
+
+    setAnswers({});
+
+    setFlagged([]);
+
+    setSubmitted(false);
+
+    setExamStarted(true);
+  }
+
+  // =========================================================
+  // FINISH EXAM
+  // =========================================================
+
+  async function finishExam() {
+    if (finishLockRef.current) {
+      return;
+    }
+
+    finishLockRef.current = true;
+
+    if (submittedRef.current) {
+      return;
+    }
+
+    setSubmitted(true);
+
+    setShowSubmit(false);
+
+    await exitFullscreen();
+
+    const finalAnswers =
+      answersRef.current;
+
+    const finalQuestions =
+      examQuestions;
+
+    if (
+      typeof onFinishRef.current ===
+      "function"
+    ) {
+      onFinishRef.current(
+        finalAnswers,
+        finalQuestions
+      );
+    }
+  }
+
+  // =========================================================
   // TIMER
-  // =====================================================
+  // =========================================================
 
   useEffect(() => {
     if (
       !examStarted ||
-      submitted
+      submitted ||
+      examQuestions.length === 0
     ) {
       return;
     }
 
-    const timer =
-      setInterval(() => {
-        setSeconds((previous) => {
-          if (previous <= 1) {
-            clearInterval(timer);
+    const timer = setInterval(() => {
+      setSeconds((previous) => {
+        if (previous <= 1) {
+          clearInterval(timer);
 
-            finishExam();
+          finishExam();
 
-            return 0;
-          }
+          return 0;
+        }
 
-          return previous - 1;
-        });
-      }, 1000);
+        return previous - 1;
+      });
+    }, 1000);
 
     return () => {
       clearInterval(timer);
@@ -617,18 +760,146 @@ function CBTExam({
   }, [
     examStarted,
     submitted,
+    examQuestions.length,
   ]);
 
-  // =====================================================
-  // NO QUESTIONS
-  // =====================================================
+  // =========================================================
+  // ANSWER
+  // =========================================================
 
-  if (examQuestions.length === 0) {
+  function selectAnswer(index) {
+    if (submittedRef.current) {
+      return;
+    }
+
+    const question =
+      examQuestions[current];
+
+    if (!question) {
+      return;
+    }
+
+    setAnswers((previous) => ({
+      ...previous,
+      [question.id]: index,
+    }));
+  }
+
+  // =========================================================
+  // FLAG
+  // =========================================================
+
+  function toggleFlag() {
+    if (submittedRef.current) {
+      return;
+    }
+
+    const question =
+      examQuestions[current];
+
+    if (!question) {
+      return;
+    }
+
+    setFlagged((previous) =>
+      previous.includes(question.id)
+        ? previous.filter(
+            (id) => id !== question.id
+          )
+        : [
+            ...previous,
+            question.id,
+          ]
+    );
+  }
+
+  // =========================================================
+  // NEXT
+  // =========================================================
+
+  function nextQuestion() {
+    setCurrent((previous) =>
+      Math.min(
+        examQuestions.length - 1,
+        previous + 1
+      )
+    );
+  }
+
+  // =========================================================
+  // PREVIOUS
+  // =========================================================
+
+  function previousQuestion() {
+    setCurrent((previous) =>
+      Math.max(0, previous - 1)
+    );
+  }
+
+  // =========================================================
+  // QUESTION NAVIGATION
+  // =========================================================
+
+  function goToQuestion(index) {
+    setCurrent(
+      Math.max(
+        0,
+        Math.min(
+          examQuestions.length - 1,
+          index
+        )
+      )
+    );
+  }
+
+  // =========================================================
+  // COUNTS
+  // =========================================================
+
+  const answeredCount =
+    Object.keys(answers).length;
+
+  const flaggedCount =
+    flagged.length;
+
+  const unansweredCount =
+    Math.max(
+      0,
+      examQuestions.length -
+        answeredCount
+    );
+
+  // =========================================================
+  // TIMER DISPLAY
+  // =========================================================
+
+  const minutes = Math.floor(
+    seconds / 60
+  )
+    .toString()
+    .padStart(2, "0");
+
+  const secs = (
+    seconds % 60
+  )
+    .toString()
+    .padStart(2, "0");
+
+  // =========================================================
+  // CURRENT QUESTION
+  // =========================================================
+
+  const question =
+    examQuestions[current];
+
+  // =========================================================
+  // LOADING SCREEN
+  // =========================================================
+
+  if (loading) {
     return (
       <div className="cbt-page">
-
         <header className="cbt-header">
-
           <div>
             <div className="cbt-logo">
               C
@@ -640,11 +911,10 @@ function CBTExam({
               </strong>
 
               <span>
-                {subject} Examination
+                Examination System
               </span>
             </div>
           </div>
-
         </header>
 
         <div
@@ -669,59 +939,56 @@ function CBTExam({
                 "0 20px 60px rgba(0,0,0,0.08)",
             }}
           >
-            <AlertCircle
+            <RefreshCw
               size={45}
+              style={{
+                animation:
+                  "spin 1.2s linear infinite",
+              }}
             />
 
             <h1>
-              No Questions Available
+              Loading Examination
             </h1>
 
-            <p>
-              There are currently no
-              questions available for{" "}
-              <strong>{subject}</strong>.
-            </p>
-
-            <button
-              className="hero-primary"
-              onClick={() => {
-                if (
-                  typeof onCancel ===
-                  "function"
-                ) {
-                  onCancel();
-                }
+            <p
+              style={{
+                marginTop: "12px",
+                color: "#667085",
+                lineHeight: 1.6,
               }}
             >
-              Back to Dashboard
-            </button>
+              {loadingMessage}
+            </p>
 
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "12px",
+                background: "#f8fafc",
+                borderRadius: "10px",
+                fontSize: "14px",
+              }}
+            >
+              Subject:{" "}
+              <strong>{subject}</strong>
+            </div>
           </div>
         </div>
-
       </div>
     );
   }
 
-  // =====================================================
-  // PRE-EXAMINATION SYSTEM CHECK
-  // =====================================================
+  // =========================================================
+  // ERROR SCREEN
+  // =========================================================
 
-  if (!examStarted) {
+  if (loadError) {
     return (
-      <div className="precheck-page">
-
-        <div className="precheck-glow glow-one"></div>
-        <div className="precheck-glow glow-two"></div>
-
-        {/* HEADER */}
-
-        <header className="precheck-header">
-
-          <div className="precheck-brand">
-
-            <div className="precheck-logo">
+      <div className="cbt-page">
+        <header className="cbt-header">
+          <div>
+            <div className="cbt-logo">
               C
             </div>
 
@@ -731,448 +998,180 @@ function CBTExam({
               </strong>
 
               <span>
-                Examination Portal
+                Examination System
               </span>
             </div>
-
           </div>
-
-          <div className="precheck-secure">
-
-            <ShieldCheck size={17} />
-
-            Secure Examination
-
-          </div>
-
         </header>
 
-        {/* CONTENT */}
-
-        <main className="precheck-container">
-
-          <div className="precheck-heading">
-
-            <div className="precheck-badge">
-
-              <ShieldCheck size={15} />
-
-              PRE-EXAMINATION SYSTEM CHECK
-
-            </div>
+        <div
+          style={{
+            minHeight:
+              "calc(100vh - 80px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "30px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "560px",
+              background: "#fff",
+              borderRadius: "20px",
+              padding: "45px 30px",
+              textAlign: "center",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.08)",
+            }}
+          >
+            <AlertCircle
+              size={55}
+              style={{
+                marginBottom: "15px",
+              }}
+            />
 
             <h1>
-              Let's check your{" "}
-              <span>
-                examination setup.
-              </span>
+              Unable to Load Examination
             </h1>
 
-            <p>
-              The examination is conducted
-              in a{" "}
-              <strong>
-                proctored environment.
-              </strong>{" "}
-              Before the examination begins,
-              a few system checks will be
-              performed to verify that your
-              device, browser and internet
-              connection meet the required
-              examination standards.
+            <p
+              style={{
+                marginTop: "12px",
+                color: "#667085",
+                lineHeight: 1.6,
+              }}
+            >
+              {loadError}
             </p>
 
-            <div className="exam-subject-label">
-
-              Examination:
-
-              <strong>
-                {subject}
-              </strong>
-
-            </div>
-
-          </div>
-
-          {/* GRID */}
-
-          <div className="precheck-grid">
-
-            {/* SYSTEM CHECKS */}
-
-            <section className="system-check-card">
-
-              <div className="card-title">
-
-                <div>
-
-                  <span>
-                    SYSTEM READINESS CHECKS
-                  </span>
-
-                  <h2>
-                    Device verification
-                  </h2>
-
-                </div>
-
-                <ShieldCheck
-                  size={27}
-                />
-
-              </div>
-
-              {/* FULLSCREEN */}
-
-              <div className="check-item">
-
-                <div className="check-icon purple">
-                  <Monitor size={22} />
-                </div>
-
-                <div className="check-content">
-
-                  <h3>
-                    Fullscreen Capability
-                  </h3>
-
-                  <p>
-                    The browser must support
-                    fullscreen mode to provide
-                    a secure examination
-                    environment.
-                  </p>
-
-                </div>
-
-                <StatusIcon
-                  passed={
-                    fullscreenSupported
-                  }
-                />
-
-              </div>
-
-              {/* INTERNET */}
-
-              <div className="check-item">
-
-                <div className="check-icon blue">
-                  <Wifi size={22} />
-                </div>
-
-                <div className="check-content">
-
-                  <h3>
-                    Internet Connection
-                  </h3>
-
-                  <p>
-                    A stable internet connection
-                    is required throughout the
-                    examination.
-                  </p>
-
-                </div>
-
-                <StatusIcon
-                  passed={
-                    internetConnected
-                  }
-                />
-
-              </div>
-
-              {/* CAMERA */}
-
-              <div className="check-item">
-
-                <div className="check-icon green">
-                  <Camera size={22} />
-                </div>
-
-                <div className="check-content">
-
-                  <h3>
-                    Camera
-                  </h3>
-
-                  <p>
-                    Camera access is required
-                    to verify the candidate's
-                    presence.
-                  </p>
-
-                  {cameraError && (
-                    <small className="camera-error">
-                      {cameraError}
-                    </small>
-                  )}
-
-                </div>
-
-                <StatusIcon
-                  passed={
-                    cameraReady
-                  }
-                  checking={
-                    cameraStatus ===
-                    "checking"
-                  }
-                />
-
-              </div>
-
-              {/* FACE */}
-
-              <div className="check-item">
-
-                <div className="check-icon orange">
-                  <UserRound size={22} />
-                </div>
-
-                <div className="check-content">
-
-                  <h3>
-                    Face Visibility
-                  </h3>
-
-                  <p>
-                    Ensure that your face
-                    remains clearly visible
-                    and positioned inside
-                    the camera frame.
-                  </p>
-
-                </div>
-
-                <StatusIcon
-                  passed={
-                    faceReady
-                  }
-                />
-
-              </div>
-
-              {/* READINESS */}
-
-              <div
-                className={`readiness-box ${
-                  allChecksPassed
-                    ? "ready"
-                    : "not-ready"
-                }`}
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+                marginTop: "25px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="hero-primary"
+                onClick={() =>
+                  window.location.reload()
+                }
               >
+                <RefreshCw size={17} />
+                Retry
+              </button>
 
-                {allChecksPassed ? (
-                  <>
-                    <CheckCircle2
-                      size={22}
-                    />
-
-                    <div>
-
-                      <strong>
-                        Examination
-                        Readiness Confirmed
-                      </strong>
-
-                      <span>
-                        All required system
-                        checks have been
-                        successfully completed.
-                      </span>
-
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle
-                      size={22}
-                    />
-
-                    <div>
-
-                      <strong>
-                        Complete all checks
-                      </strong>
-
-                      <span>
-                        Please resolve the
-                        failed checks before
-                        proceeding.
-                      </span>
-
-                    </div>
-                  </>
-                )}
-
-              </div>
-
-              {/* RETRY */}
-
-              {cameraStatus ===
-                "failed" && (
-                <button
-                  className="retry-camera"
-                  onClick={startCamera}
-                >
-                  <RefreshCw
-                    size={16}
-                  />
-
-                  Retry Camera
-
-                </button>
-              )}
-
-            </section>
-
-            {/* CAMERA */}
-
-            <section className="camera-card">
-
-              <div className="camera-card-header">
-
-                <div>
-
-                  <span>
-                    CAMERA VERIFICATION
-                  </span>
-
-                  <h2>
-                    Position yourself
-                  </h2>
-
-                </div>
-
-                {cameraReady && (
-                  <div className="live-badge">
-
-                    <span></span>
-
-                    LIVE
-
-                  </div>
-                )}
-
-              </div>
-
-              <div className="camera-preview">
-
-                {cameraReady ? (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="camera-video"
-                  />
-                ) : (
-                  <div className="camera-placeholder">
-
-                    <Camera size={50} />
-
-                    <strong>
-                      Camera Preview
-                    </strong>
-
-                    <span>
-                      Camera access is
-                      required before
-                      starting the exam.
-                    </span>
-
-                  </div>
-                )}
-
-                {cameraReady && (
-                  <div className="camera-frame">
-
-                    <div className="corner top-left"></div>
-
-                    <div className="corner top-right"></div>
-
-                    <div className="corner bottom-left"></div>
-
-                    <div className="corner bottom-right"></div>
-
-                    <div className="face-guide">
-
-                      <UserRound
-                        size={72}
-                      />
-
-                    </div>
-
-                  </div>
-                )}
-
-              </div>
-
-              <div className="camera-instruction">
-
-                <CheckCircle2
-                  size={18}
-                />
-
-                <span>
-                  Position your face inside
-                  the frame and ensure there
-                  is enough lighting.
-                </span>
-
-              </div>
-
-            </section>
-
+              <button
+                className="hero-secondary"
+                onClick={() => {
+                  if (
+                    typeof onCancel ===
+                    "function"
+                  ) {
+                    onCancel();
+                  }
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          {/* CONFIRMATION */}
+  // =========================================================
+  // NO QUESTIONS
+  // =========================================================
 
-          <div
-            className={`final-readiness ${
-              allChecksPassed
-                ? "ready"
-                : ""
-            }`}
-          >
-
-            <div className="final-icon">
-
-              <ShieldCheck
-                size={27}
-              />
-
+  if (examQuestions.length === 0) {
+    return (
+      <div className="cbt-page">
+        <header className="cbt-header">
+          <div>
+            <div className="cbt-logo">
+              C
             </div>
 
             <div>
+              <strong>
+                CBT Arena
+              </strong>
 
-              <h2>
-                {allChecksPassed
-                  ? "Examination Readiness Confirmed"
-                  : "Examination Not Ready"}
-              </h2>
-
-              <p>
-                {allChecksPassed
-                  ? "All required system checks have been successfully completed. The examination may now begin."
-                  : "Please complete the required system checks before starting your examination."}
-              </p>
-
+              <span>
+                {subject} Examination
+              </span>
             </div>
-
           </div>
+        </header>
 
-          {/* BUTTONS */}
+        <div
+          style={{
+            minHeight:
+              "calc(100vh - 80px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "30px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "560px",
+              background: "#fff",
+              borderRadius: "20px",
+              padding: "45px 30px",
+              textAlign: "center",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.08)",
+            }}
+          >
+            <AlertCircle
+              size={55}
+            />
 
-          <div className="precheck-actions">
+            <h1>
+              No Questions Available
+            </h1>
+
+            <p
+              style={{
+                marginTop: "12px",
+                color: "#667085",
+                lineHeight: 1.6,
+              }}
+            >
+              There are currently no
+              active questions for{" "}
+              <strong>{subject}</strong>{" "}
+              in the CBT Arena database.
+            </p>
+
+            <p
+              style={{
+                marginTop: "10px",
+                color: "#667085",
+              }}
+            >
+              Once questions are added
+              through the database/admin
+              system, they will appear here
+              automatically.
+            </p>
 
             <button
-              className="back-dashboard"
+              className="hero-primary"
+              style={{
+                margin: "25px auto 0",
+              }}
               onClick={() => {
-                stopCamera();
-
                 if (
                   typeof onCancel ===
                   "function"
@@ -1183,141 +1182,411 @@ function CBTExam({
             >
               Back to Dashboard
             </button>
-
-            <button
-              className="start-exam-button"
-              disabled={!allChecksPassed}
-              onClick={beginExam}
-            >
-              Start Examination
-
-              <ArrowRightIcon />
-
-            </button>
-
           </div>
-
-          <div className="precheck-footer">
-
-            <ShieldCheck size={14} />
-
-            Your examination environment
-            is monitored to maintain
-            examination integrity.
-
-          </div>
-
-        </main>
-
+        </div>
       </div>
     );
   }
 
-  // =====================================================
-  // EXAM VARIABLES
-  // =====================================================
+  // =========================================================
+  // PRE-EXAM SCREEN
+  // =========================================================
 
-  const question =
-    examQuestions[current];
+  if (!examStarted) {
+    return (
+      <div className="cbt-page">
+        <header className="cbt-header">
+          <div>
+            <div className="cbt-logo">
+              C
+            </div>
 
-  const minutes = Math.floor(
-    seconds / 60
-  )
-    .toString()
-    .padStart(2, "0");
+            <div>
+              <strong>
+                CBT Arena
+              </strong>
 
-  const secs = (
-    seconds % 60
-  )
-    .toString()
-    .padStart(2, "0");
+              <span>
+                Examination Setup
+              </span>
+            </div>
+          </div>
 
-  // =====================================================
-  // ANSWER
-  // =====================================================
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "14px",
+            }}
+          >
+            <Wifi
+              size={17}
+            />
 
-  function selectAnswer(index) {
-    if (submittedRef.current) {
-      return;
-    }
+            {internetConnected
+              ? "Online"
+              : "Offline"}
+          </div>
+        </header>
 
-    setAnswers((previous) => ({
-      ...previous,
-      [question.id]: index,
-    }));
-  }
+        <main
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "35px 20px 60px",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "24px",
+              padding: "35px",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.08)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                marginBottom: "25px",
+              }}
+            >
+              <div className="cbt-logo">
+                C
+              </div>
 
-  // =====================================================
-  // FLAG
-  // =====================================================
+              <div>
+                <h1
+                  style={{
+                    margin: 0,
+                  }}
+                >
+                  {subject}
+                </h1>
 
-  function toggleFlag() {
-    if (submittedRef.current) {
-      return;
-    }
+                <p
+                  style={{
+                    margin: "5px 0 0",
+                    color: "#667085",
+                  }}
+                >
+                  CBT Arena Examination
+                </p>
+              </div>
+            </div>
 
-    setFlagged((previous) =>
-      previous.includes(question.id)
-        ? previous.filter(
-            (id) =>
-              id !== question.id
-          )
-        : [
-            ...previous,
-            question.id,
-          ]
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(180px,1fr))",
+                gap: "15px",
+                marginBottom: "30px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "20px",
+                  borderRadius: "15px",
+                  background: "#f8fafc",
+                }}
+              >
+                <small>
+                  Available Questions
+                </small>
+
+                <h2
+                  style={{
+                    margin: "8px 0 0",
+                  }}
+                >
+                  {availableQuestionCount}
+                </h2>
+              </div>
+
+              <div
+                style={{
+                  padding: "20px",
+                  borderRadius: "15px",
+                  background: "#f8fafc",
+                }}
+              >
+                <small>
+                  Selected Questions
+                </small>
+
+                <h2
+                  style={{
+                    margin: "8px 0 0",
+                  }}
+                >
+                  {examQuestions.length}
+                </h2>
+              </div>
+
+              <div
+                style={{
+                  padding: "20px",
+                  borderRadius: "15px",
+                  background: "#f8fafc",
+                }}
+              >
+                <small>
+                  Examination Time
+                </small>
+
+                <h2
+                  style={{
+                    margin: "8px 0 0",
+                  }}
+                >
+                  {durationMinutes} mins
+                </h2>
+              </div>
+            </div>
+
+            {/* SETTINGS */}
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(220px,1fr))",
+                gap: "20px",
+              }}
+            >
+              <label>
+                <strong>
+                  Number of Questions
+                </strong>
+
+                <select
+                  value={questionCount}
+                  onChange={(event) =>
+                    setQuestionCount(
+                      Number(
+                        event.target.value
+                      )
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    marginTop: "8px",
+                    padding: "13px",
+                    borderRadius: "10px",
+                    border:
+                      "1px solid #d0d5dd",
+                    background: "#fff",
+                  }}
+                >
+                  {[20, 30, 50, 100, 150]
+                    .filter(
+                      (number) =>
+                        number <=
+                        availableQuestionCount
+                    )
+                    .map((number) => (
+                      <option
+                        key={number}
+                        value={number}
+                      >
+                        {number} Questions
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label>
+                <strong>
+                  Examination Duration
+                </strong>
+
+                <select
+                  value={durationMinutes}
+                  onChange={(event) =>
+                    setDurationMinutes(
+                      Number(
+                        event.target.value
+                      )
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    marginTop: "8px",
+                    padding: "13px",
+                    borderRadius: "10px",
+                    border:
+                      "1px solid #d0d5dd",
+                    background: "#fff",
+                  }}
+                >
+                  {[30, 45, 60, 90, 120, 150, 180]
+                    .map((number) => (
+                      <option
+                        key={number}
+                        value={number}
+                      >
+                        {number} Minutes
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+
+            {/* RULES */}
+
+            <div
+              style={{
+                marginTop: "30px",
+                padding: "22px",
+                borderRadius: "15px",
+                background: "#f8fafc",
+              }}
+            >
+              <h3
+                style={{
+                  marginTop: 0,
+                }}
+              >
+                Examination Rules
+              </h3>
+
+              <ul
+                style={{
+                  lineHeight: 1.8,
+                  color: "#475467",
+                  paddingLeft: "20px",
+                }}
+              >
+                <li>
+                  Questions are randomly
+                  selected from the database.
+                </li>
+
+                <li>
+                  Your answers are tracked
+                  during the examination.
+                </li>
+
+                <li>
+                  You can move between
+                  questions using the navigator.
+                </li>
+
+                <li>
+                  You can flag questions for
+                  later review.
+                </li>
+
+                <li>
+                  Leaving the examination
+                  window may generate an
+                  integrity warning.
+                </li>
+
+                <li>
+                  The examination timer cannot
+                  be paused once started.
+                </li>
+              </ul>
+            </div>
+
+            {/* STATUS */}
+
+            <div
+              style={{
+                marginTop: "25px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "14px 16px",
+                borderRadius: "12px",
+                background:
+                  internetConnected
+                    ? "#ecfdf3"
+                    : "#fef3f2",
+              }}
+            >
+              {internetConnected ? (
+                <CheckCircle2
+                  size={20}
+                />
+              ) : (
+                <AlertCircle
+                  size={20}
+                />
+              )}
+
+              <span>
+                {internetConnected
+                  ? "Internet connection detected. You are ready to continue."
+                  : "Internet connection required."}
+              </span>
+            </div>
+
+            {/* ACTIONS */}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "15px",
+                marginTop: "30px",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                className="hero-secondary"
+                onClick={() => {
+                  if (
+                    typeof onCancel ===
+                    "function"
+                  ) {
+                    onCancel();
+                  }
+                }}
+              >
+                Back to Dashboard
+              </button>
+
+              <button
+                className="hero-primary"
+                disabled={
+                  !internetConnected ||
+                  examQuestions.length === 0
+                }
+                onClick={beginExam}
+              >
+                Start Examination
+                <ChevronRight
+                  size={19}
+                />
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
     );
   }
 
-  // =====================================================
-  // NAVIGATION
-  // =====================================================
-
-  function nextQuestion() {
-    setCurrent((previous) =>
-      Math.min(
-        examQuestions.length - 1,
-        previous + 1
-      )
-    );
-  }
-
-  function previousQuestion() {
-    setCurrent((previous) =>
-      Math.max(0, previous - 1)
-    );
-  }
-
-  // =====================================================
-  // COUNTS
-  // =====================================================
-
-  const answeredCount =
-    Object.keys(answers).length;
-
-  const remainingCount =
-    examQuestions.length -
-    answeredCount;
-
-  // =====================================================
-  // EXAM SCREEN
-  // =====================================================
+  // =========================================================
+  // EXAMINATION SCREEN
+  // =========================================================
 
   return (
     <div className="cbt-page">
-
       {/* HEADER */}
 
       <header className="cbt-header">
-
         <div>
-
           <div className="cbt-logo">
             C
           </div>
 
           <div>
-
             <strong>
               CBT Arena
             </strong>
@@ -1325,25 +1594,18 @@ function CBTExam({
             <span>
               {subject} Examination
             </span>
-
           </div>
-
         </div>
 
         <div className="exam-progress">
-
           Question{" "}
-
           <strong>
             {current + 1}
           </strong>{" "}
-
           of{" "}
-
           <strong>
             {examQuestions.length}
           </strong>
-
         </div>
 
         <div
@@ -1353,25 +1615,19 @@ function CBTExam({
               : ""
           }`}
         >
-
           <Clock3 size={18} />
 
           {minutes}:{secs}
-
         </div>
-
       </header>
 
       {/* BODY */}
 
       <div className="cbt-body">
-
-        {/* QUESTION */}
+        {/* QUESTION AREA */}
 
         <main className="question-area">
-
           <div className="question-top">
-
             <span>
               QUESTION{" "}
               {current + 1}
@@ -1389,7 +1645,6 @@ function CBTExam({
                 toggleFlag
               }
             >
-
               <Flag size={16} />
 
               {flagged.includes(
@@ -1397,24 +1652,53 @@ function CBTExam({
               )
                 ? "Flagged"
                 : "Flag Question"}
-
             </button>
-
           </div>
 
           <div className="question-card">
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                gap: "15px",
+                flexWrap: "wrap",
+                marginBottom: "18px",
+              }}
+            >
+              <small
+                style={{
+                  color: "#667085",
+                }}
+              >
+                {question.year
+                  ? `Year: ${question.year}`
+                  : "Practice Question"}
+
+                {question.paper
+                  ? ` • Paper ${question.paper}`
+                  : ""}
+              </small>
+
+              {question.difficulty && (
+                <small
+                  style={{
+                    color: "#667085",
+                  }}
+                >
+                  Difficulty:{" "}
+                  {question.difficulty}
+                </small>
+              )}
+            </div>
 
             <h1>
               {question.question}
             </h1>
 
             <div className="options">
-
               {question.options.map(
-                (
-                  option,
-                  index
-                ) => (
+                (option, index) => (
                   <button
                     key={`${question.id}-${index}`}
                     className={`option ${
@@ -1430,31 +1714,24 @@ function CBTExam({
                       )
                     }
                   >
-
                     <span className="option-letter">
-
                       {String.fromCharCode(
                         65 + index
                       )}
-
                     </span>
 
                     <span>
                       {option}
                     </span>
-
                   </button>
                 )
               )}
-
             </div>
-
           </div>
 
           {/* ACTIONS */}
 
           <div className="question-actions">
-
             <button
               className="previous-button"
               disabled={
@@ -1464,13 +1741,11 @@ function CBTExam({
                 previousQuestion
               }
             >
-
               <ChevronLeft
                 size={18}
               />
 
               Previous
-
             </button>
 
             {current <
@@ -1482,13 +1757,11 @@ function CBTExam({
                   nextQuestion
                 }
               >
-
                 Next
 
                 <ChevronRight
                   size={18}
                 />
-
               </button>
             ) : (
               <button
@@ -1499,26 +1772,21 @@ function CBTExam({
                   )
                 }
               >
-
-                <Send size={17} />
+                <Send
+                  size={17}
+                />
 
                 Submit Exam
-
               </button>
             )}
-
           </div>
-
         </main>
 
         {/* NAVIGATOR */}
 
         <aside className="navigator">
-
           <div className="navigator-heading">
-
             <div>
-
               <span>
                 QUESTIONS
               </span>
@@ -1526,39 +1794,26 @@ function CBTExam({
               <h2>
                 Navigator
               </h2>
-
             </div>
-
           </div>
 
-          <div className="navigator-legend">
-
+          <div
+            className="navigator-legend"
+          >
             <span>
-
               <i className="answered-dot"></i>
-
               Answered
-
             </span>
 
             <span>
-
               <i className="flag-dot"></i>
-
               Flagged
-
             </span>
-
           </div>
 
           <div className="question-grid">
-
             {examQuestions.map(
-              (
-                item,
-                index
-              ) => {
-
+              (item, index) => {
                 const answered =
                   answers[
                     item.id
@@ -1573,7 +1828,7 @@ function CBTExam({
                   <button
                     key={item.id}
                     onClick={() =>
-                      setCurrent(
+                      goToQuestion(
                         index
                       )
                     }
@@ -1596,22 +1851,31 @@ function CBTExam({
                       }
                     `}
                   >
-
                     {index + 1}
-
                   </button>
                 );
               }
             )}
-
           </div>
 
           {/* SUMMARY */}
 
-          <div className="navigator-summary">
-
-            <div>
-
+          <div
+            style={{
+              marginTop: "25px",
+              paddingTop: "20px",
+              borderTop:
+                "1px solid #eaecf0",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                marginBottom: "8px",
+              }}
+            >
               <span>
                 Answered
               </span>
@@ -1619,294 +1883,119 @@ function CBTExam({
               <strong>
                 {answeredCount}
               </strong>
-
             </div>
 
-            <div>
-
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                marginBottom: "8px",
+              }}
+            >
               <span>
-                Remaining
+                Unanswered
               </span>
 
               <strong>
-                {remainingCount}
+                {unansweredCount}
               </strong>
-
             </div>
 
-            <div>
-
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+              }}
+            >
               <span>
                 Flagged
               </span>
 
               <strong>
-                {flagged.length}
+                {flaggedCount}
               </strong>
-
             </div>
-
           </div>
 
-          {/* VIOLATIONS */}
+          {/* INTEGRITY */}
 
           <div
             style={{
-              marginTop: "18px",
-              padding: "14px",
+              marginTop: "25px",
+              padding: "15px",
               borderRadius: "12px",
               background:
-                violations === 0
-                  ? "#f2f4f7"
-                  : "#fff3cd",
-              border:
-                "1px solid #eaecf0",
-            }}
-          >
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "13px",
-                fontWeight: 600,
-              }}
-            >
-
-              <ShieldAlert
-                size={17}
-              />
-
-              Exam Violations
-
-            </div>
-
-            <div
-              style={{
-                marginTop: "5px",
-                fontSize: "13px",
-                color: "#667085",
-              }}
-            >
-
-              {violations} of 3
-
-            </div>
-
-          </div>
-
-          <button
-            className="navigator-submit"
-            onClick={() =>
-              setShowSubmit(true)
-            }
-          >
-
-            Submit Examination
-
-          </button>
-
-        </aside>
-
-      </div>
-
-      {/* FULLSCREEN REMINDER */}
-
-      {!isFullscreen &&
-        !showViolation &&
-        !submitted && (
-          <div
-            style={{
-              position: "fixed",
-              bottom: "20px",
-              left: "50%",
-              transform:
-                "translateX(-50%)",
-              zIndex: 1000,
-              background: "#101828",
-              color: "#fff",
-              padding:
-                "12px 18px",
-              borderRadius: "10px",
+                violations > 0
+                  ? "#fff7ed"
+                  : "#f8fafc",
               display: "flex",
-              alignItems: "center",
               gap: "10px",
-              boxShadow:
-                "0 10px 30px rgba(0,0,0,0.25)",
-              fontSize: "13px",
             }}
           >
+            <ShieldCheck
+              size={19}
+            />
 
-            <Maximize size={17} />
+            <div>
+              <strong>
+                Exam Integrity
+              </strong>
 
-            Fullscreen mode is
-            required for this
-            examination.
-
-          </div>
-        )}
-
-      {/* VIOLATION MODAL */}
-
-      {showViolation && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            background:
-              "rgba(10, 15, 25, 0.96)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "25px",
-          }}
-        >
-
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              background: "#fff",
-              borderRadius: "22px",
-              padding:
-                "40px 30px",
-              textAlign: "center",
-              boxShadow:
-                "0 25px 80px rgba(0,0,0,0.4)",
-            }}
-          >
-
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                margin:
-                  "0 auto 20px",
-                borderRadius: "50%",
-                background:
-                  "#fff3cd",
-                color: "#856404",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-
-              <ShieldAlert
-                size={42}
-              />
-
+              <div
+                style={{
+                  fontSize: "13px",
+                  marginTop: "4px",
+                }}
+              >
+                Violations:{" "}
+                {violations}
+              </div>
             </div>
-
-            <span
-              style={{
-                display: "block",
-                fontSize: "12px",
-                fontWeight: 800,
-                letterSpacing:
-                  "0.08em",
-                color: "#d92d20",
-                marginBottom:
-                  "8px",
-              }}
-            >
-              EXAMINATION WARNING
-            </span>
-
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "28px",
-              }}
-            >
-              You left the
-              examination window
-            </h2>
-
-            <p
-              style={{
-                marginTop: "15px",
-                color: "#667085",
-                lineHeight: 1.6,
-              }}
-            >
-              Switching browser tabs,
-              windows, or leaving
-              fullscreen mode is
-              recorded as an
-              examination violation.
-            </p>
-
-            <div
-              style={{
-                margin: "20px 0",
-                padding: "15px",
-                borderRadius: "12px",
-                background:
-                  "#fef3f2",
-                color: "#b42318",
-                fontWeight: 700,
-              }}
-            >
-
-              Violation{" "}
-              {violations} of 3
-
-            </div>
-
-            <p
-              style={{
-                fontSize: "13px",
-                color: "#667085",
-              }}
-            >
-              Your third violation
-              will automatically
-              submit the examination.
-            </p>
-
-            <button
-              className="hero-primary"
-              onClick={async () => {
-                setShowViolation(
-                  false
-                );
-
-                await enterFullscreen();
-              }}
-              style={{
-                margin:
-                  "20px auto 0",
-              }}
-            >
-
-              <Maximize
-                size={18}
-              />
-
-              Return to Examination
-
-            </button>
-
           </div>
-
-        </div>
-      )}
+        </aside>
+      </div>
 
       {/* SUBMIT MODAL */}
 
       {showSubmit && (
-        <div className="modal-backdrop">
-
-          <div className="submit-modal">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background:
+              "rgba(15,23,42,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "480px",
+              background: "#fff",
+              borderRadius: "20px",
+              padding: "30px",
+            }}
+          >
+            <Send
+              size={40}
+            />
 
             <h2>
-              Submit examination?
+              Submit Examination?
             </h2>
 
-            <p>
+            <p
+              style={{
+                color: "#667085",
+                lineHeight: 1.6,
+              }}
+            >
               You have answered{" "}
               <strong>
                 {answeredCount}
@@ -1918,95 +2007,126 @@ function CBTExam({
               questions.
             </p>
 
-            {answeredCount <
-              examQuestions.length && (
-              <div className="warning">
-
-                You still have{" "}
-                <strong>
-                  {remainingCount}
-                </strong>{" "}
-                unanswered questions.
-
-              </div>
+            {unansweredCount >
+              0 && (
+              <p
+                style={{
+                  color: "#b54708",
+                }}
+              >
+                {unansweredCount}{" "}
+                question(s) remain
+                unanswered.
+              </p>
             )}
 
-            <div className="modal-actions">
-
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "flex-end",
+                gap: "12px",
+                marginTop: "25px",
+              }}
+            >
               <button
+                className="hero-secondary"
                 onClick={() =>
                   setShowSubmit(
                     false
                   )
                 }
-                className="cancel-button"
               >
                 Continue Exam
               </button>
 
               <button
+                className="hero-primary"
                 onClick={
                   finishExam
                 }
-                className="confirm-submit"
               >
-                Submit Now
+                Submit Exam
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
 
+      {/* VIOLATION MODAL */}
+
+      {showViolation && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background:
+              "rgba(15,23,42,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 1100,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "480px",
+              background: "#fff",
+              borderRadius: "20px",
+              padding: "30px",
+              textAlign: "center",
+            }}
+          >
+            <ShieldAlert
+              size={50}
+            />
+
+            <h2>
+              Examination Warning
+            </h2>
+
+            <p
+              style={{
+                color: "#667085",
+                lineHeight: 1.6,
+              }}
+            >
+              {violationReason}
+            </p>
+
+            <div
+              style={{
+                marginTop: "15px",
+                padding: "12px",
+                borderRadius: "10px",
+                background: "#fff7ed",
+              }}
+            >
+              Warning count:{" "}
+              <strong>
+                {violations}
+              </strong>
+            </div>
+
+            <button
+              className="hero-primary"
+              style={{
+                marginTop: "20px",
+              }}
+              onClick={() =>
+                setShowViolation(
+                  false
+                )
+              }
+            >
+              Continue Examination
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}
-
-// =======================================================
-// STATUS COMPONENT
-// =======================================================
-
-function StatusIcon({
-  passed,
-  checking = false,
-}) {
-  if (checking) {
-    return (
-      <div className="system-status checking">
-        <RefreshCw
-          size={18}
-          className="spin-icon"
-        />
-      </div>
-    );
-  }
-
-  if (passed) {
-    return (
-      <div className="system-status passed">
-        <CheckCircle2
-          size={20}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="system-status failed">
-      <XCircle size={20} />
-    </div>
-  );
-}
-
-// =======================================================
-// ARROW ICON
-// =======================================================
-
-function ArrowRightIcon() {
-  return (
-    <ChevronRight size={19} />
   );
 }
 
